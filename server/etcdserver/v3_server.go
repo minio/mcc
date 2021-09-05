@@ -24,6 +24,7 @@ import (
 
 	pb "go.etcd.io/etcd/api/v3/etcdserverpb"
 	"go.etcd.io/etcd/api/v3/membershippb"
+	"go.etcd.io/etcd/pkg/v3/kms"
 	"go.etcd.io/etcd/pkg/v3/traceutil"
 	"go.etcd.io/etcd/raft/v3"
 	"go.etcd.io/etcd/server/v3/auth"
@@ -129,16 +130,35 @@ func (s *EtcdServer) Range(ctx context.Context, r *pb.RangeRequest) (*pb.RangeRe
 		err = serr
 		return nil, err
 	}
+
+	// Decrypt from backend if KMS is enabled.
+	if s.kms != nil {
+		for i, kv := range resp.Kvs {
+			value, err := kms.DecryptBytes(s.kms, kv.Value, kms.Context{
+				string(kv.Key): string(kv.Key),
+			})
+			if err != nil {
+				return nil, err
+			}
+			resp.Kvs[i].Value = value
+		}
+	}
 	return resp, err
 }
 
-func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (*pb.PutResponse, error) {
+func (s *EtcdServer) Put(ctx context.Context, r *pb.PutRequest) (resp *pb.PutResponse, err error) {
+	if s.kms != nil {
+		// Encrypt to backend if KMS is enabled.
+		r.Value, err = kms.EncryptBytes(s.kms, r.Value, kms.Context{
+			string(r.Key): string(r.Key),
+		})
+	}
 	ctx = context.WithValue(ctx, traceutil.StartTimeKey, time.Now())
-	resp, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
+	respP, err := s.raftRequest(ctx, pb.InternalRaftRequest{Put: r})
 	if err != nil {
 		return nil, err
 	}
-	return resp.(*pb.PutResponse), nil
+	return respP.(*pb.PutResponse), nil
 }
 
 func (s *EtcdServer) DeleteRange(ctx context.Context, r *pb.DeleteRangeRequest) (*pb.DeleteRangeResponse, error) {

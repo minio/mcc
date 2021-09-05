@@ -41,6 +41,7 @@ import (
 	"go.etcd.io/etcd/client/pkg/v3/fileutil"
 	"go.etcd.io/etcd/client/pkg/v3/types"
 	"go.etcd.io/etcd/pkg/v3/idutil"
+	"go.etcd.io/etcd/pkg/v3/kms"
 	"go.etcd.io/etcd/pkg/v3/pbutil"
 	"go.etcd.io/etcd/pkg/v3/runtime"
 	"go.etcd.io/etcd/pkg/v3/schedule"
@@ -293,6 +294,9 @@ type EtcdServer struct {
 
 	*AccessController
 
+	// Initialized KMS configuration
+	kms kms.KMS
+
 	// Ensure that storage schema is updated only once.
 	updateStorageSchema sync.Once
 }
@@ -310,6 +314,11 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 			b.be.Close()
 		}
 	}()
+
+	KMS, err := kms.NewFromEnv()
+	if err != nil {
+		return nil, err
+	}
 
 	sstats := stats.NewServerStats(cfg.Name, b.raft.wal.id.String())
 	lstats := stats.NewLeaderStats(cfg.Logger, b.raft.wal.id.String())
@@ -335,6 +344,7 @@ func NewServer(cfg config.ServerConfig) (srv *EtcdServer, err error) {
 		AccessController:   &AccessController{CORS: cfg.CORS, HostWhitelist: cfg.HostWhitelist},
 		consistIndex:       b.ci,
 		firstCommitInTermC: make(chan struct{}),
+		kms:                KMS,
 	}
 	serverID.With(prometheus.Labels{"server_id": b.raft.wal.id.String()}).Set(1)
 

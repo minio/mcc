@@ -6,11 +6,15 @@ require (
 	github.com/creack/pty v1.1.11
 	github.com/dustin/go-humanize v1.0.0
 	github.com/golang/protobuf v1.5.1 // indirect
+	github.com/json-iterator/go v1.1.11
+	github.com/minio/kes v0.16.2-0.20210906085830-c41c133d2561
+	github.com/secure-io/sio-go v0.3.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
 	go.etcd.io/etcd/client/pkg/v3 v3.5.0
 	go.uber.org/zap v1.17.0
+	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5
 	google.golang.org/grpc v1.38.0
 )
 

@@ -31,49 +31,49 @@ toggle_failpoints_default() {
   toggle_failpoints "$mode"
 }
 
-etcd_build() {
+mcc_build() {
   out="bin"
   if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
   toggle_failpoints_default
 
-  run rm -f "${out}/etcd"
+  run rm -f "${out}/mcc"
   (
     cd ./server
-    # Static compilation is useful when etcd is run in a container. $GO_BUILD_FLAGS is OK
+    # Static compilation is useful when mcc is run in a container. $GO_BUILD_FLAGS is OK
     # shellcheck disable=SC2086
     run env "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
-      -o="../${out}/etcd" . || return 2
+      -o="../${out}/mcc" . || return 2
   ) || return 2
 
-  run rm -f "${out}/etcdutl"
+  run rm -f "${out}/mccutl"
   # shellcheck disable=SC2086
   (
     cd ./etcdutl
     run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
-      -o="../${out}/etcdutl" . || return 2
+      -o="../${out}/mccutl" . || return 2
   ) || return 2
 
-  run rm -f "${out}/etcdctl"
+  run rm -f "${out}/mccctl"
   # shellcheck disable=SC2086
   (
     cd ./etcdctl
     run env GO_BUILD_FLAGS="${GO_BUILD_FLAGS}" "${GO_BUILD_ENV[@]}" go build $GO_BUILD_FLAGS \
       -installsuffix=cgo \
       "-ldflags=${GO_LDFLAGS[*]}" \
-      -o="../${out}/etcdctl" . || return 2
+      -o="../${out}/mccctl" . || return 2
   ) || return 2
   # Verify whether symbol we overriden exists
-  # For cross-compiling we cannot run: ${out}/etcd --version | grep -q "Git SHA: ${GIT_SHA}"
+  # For cross-compiling we cannot run: ${out}/mcc --version | grep -q "Git SHA: ${GIT_SHA}"
 
   # We need symbols to do this check:
   if [[ "${GO_LDFLAGS[*]}" != *"-s"* ]]; then
-    go tool nm "${out}/etcd" | grep "${VERSION_SYMBOL}" > /dev/null
+    go tool nm "${out}/mcc" | grep "${VERSION_SYMBOL}" > /dev/null
     if [[ "${PIPESTATUS[*]}" != "0 0" ]]; then
-      log_error "FAIL: Symbol ${VERSION_SYMBOL} not found in binary: ${out}/etcd"
+      log_error "FAIL: Symbol ${VERSION_SYMBOL} not found in binary: ${out}/mcc"
       return 2
     fi
   fi
@@ -83,8 +83,8 @@ tools_build() {
   out="bin"
   if [[ -n "${BINDIR}" ]]; then out="${BINDIR}"; fi
   tools_path="tools/benchmark
-    tools/etcd-dump-db
-    tools/etcd-dump-logs
+    tools/mcc-dump-db
+    tools/mcc-dump-logs
     tools/local-tester/bridge"
   for tool in ${tools_path}
   do
@@ -111,10 +111,10 @@ toggle_failpoints_default
 
 # only build when called directly, not sourced
 if echo "$0" | grep -E "build(.sh)?$" >/dev/null; then
-  if etcd_build; then
-    log_success "SUCCESS: etcd_build (GOARCH=${GOARCH})"
+  if mcc_build; then
+    log_success "SUCCESS: mcc_build (GOARCH=${GOARCH})"
   else
-    log_error "FAIL: etcd_build (GOARCH=${GOARCH})"
+    log_error "FAIL: mcc_build (GOARCH=${GOARCH})"
     exit 2
   fi
 fi
